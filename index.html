@@ -116,21 +116,19 @@
     <div class="modal hidden" id="customModal">
       <div class="modal-card">
         <div class="modal-head"><h2>🖼 自定义形象</h2><button class="x" id="closeCustom">×</button></div>
-        <p class="tip">主角图片在代码里配置（<span class="code">PLAYER_IMAGE</span>），下方只可替换掉落物图片。推荐正方形 PNG、透明背景。游戏中打开会自动暂停。</p>
+        <p class="tip">主角（<span class="code">PLAYER_IMAGE</span>）、星星（<span class="code">GOOD_IMAGE</span>）、钻石（<span class="code">GEM_IMAGE</span>）都在代码里配置。这里只能替换扣分炸弹图片。游戏中打开会自动暂停。</p>
         <div class="upload-grid">
           <div class="upload-card info-card">
             <div class="thumb"><span class="ph">🎨</span></div>
             <b>主角形象</b><small>由代码配置<br>不在此处上传</small>
           </div>
-          <div class="upload-card" data-slot="good">
-            <div class="thumb"><img alt=""><span class="ph">⭐</span></div>
-            <b>加分物品</b><small>点击上传图片</small>
-            <input type="file" accept="image/*">
-            <button class="clear">恢复默认</button>
+          <div class="upload-card info-card">
+            <div class="thumb"><span class="ph">⭐</span></div>
+            <b>星星 / 钻石</b><small>由代码配置<br>不在此处上传</small>
           </div>
           <div class="upload-card" data-slot="bad">
             <div class="thumb"><img alt=""><span class="ph">💣</span></div>
-            <b>扣分物品</b><small>点击上传图片</small>
+            <b>扣分炸弹</b><small>点击上传图片</small>
             <input type="file" accept="image/*">
             <button class="clear">恢复默认</button>
           </div>
@@ -158,16 +156,20 @@
   "use strict";
 
   /* ============================================================
-     主角图片配置（在这里设置默认角色）
+     图片配置区（图片路径写在代码里，不在页面上传）
      ------------------------------------------------------------
-     PLAYER_IMAGE 支持两种写法：
-       1) 图片路径：把图片放到本 HTML 同目录，如 'hero.png'
-       2) base64：'data:image/png;base64,...'
-     设为 'builtin' 则使用内置小狐狸；设为 '' 则画简易接物底座。
+     支持两种写法：
+       1) 图片路径：把图片放到本 HTML 同目录，如 './fsj.jpg'
+       2) base64：'data:image/jpeg;base64,...'
+     留空 '' 则使用内置绘制图形。
+     ------------------------------------------------------------
+     PLAYER_IMAGE : 主角；也可设为 'builtin' 用内置小狐狸，'' 用接物底座
+     GOOD_IMAGE   : 星星（+10）  —— 自己填图片路径
+     GEM_IMAGE    : 钻石（+30）  —— 自己填图片路径
      ============================================================ */
   const PLAYER_IMAGE = './fsj.jpg';
-  const GOOD_IMAGE   = './fsj.jpg';   // 星星（+10）
-  const GEM_IMAGE    = './fsj.jpg';   // 钻石（+30）
+  const GOOD_IMAGE   = './fsj.jpg';
+  const GEM_IMAGE    = './fsj.jpg';
 
   const canvas=document.getElementById('game');
   const ctx=canvas.getContext('2d');
@@ -188,6 +190,13 @@
     heroImg.onerror=()=>{heroReady=false;};
     heroImg.src=PLAYER_IMAGE;
   }
+  function loadImg(src){
+    const im=new Image();const box={img:im,ready:false};
+    if(src){im.onload=()=>{box.ready=true;};im.onerror=()=>{box.ready=false;};im.src=src;}
+    return box;
+  }
+  const goodSprite=loadImg(GOOD_IMAGE);
+  const gemSprite=loadImg(GEM_IMAGE);
 
   let W=0,H=0,DPR=1;
   let state='menu';
@@ -196,7 +205,7 @@
   let dragging=false, dragTarget=0, touchDir=0, flash=0, flashColor='';
   const keys={};
   const items=[], particles=[], popups=[];
-  const custom={good:null,bad:null};
+  const custom={bad:null};
   const player={x:0,y:0,w:74,h:74,speed:410,flash:0,flashBad:false};
   let scale=1;
 
@@ -383,12 +392,12 @@
     ctx.save();ctx.translate(it.x,it.y);ctx.rotate(it.rot);
     if(it.type==='good'){
       glow('rgba(255,214,110,.5)',it.size);
-      if(custom.good) drawImg(custom.good,it.size); else drawStar(it.size);
+      if(goodSprite.ready) drawImg(goodSprite.img,it.size); else drawStar(it.size);
     }else if(it.type==='bad'){
       glow('rgba(255,80,90,.4)',it.size);
       if(custom.bad) drawImg(custom.bad,it.size); else drawBomb(it.size);
     }else{
-      if(custom.good) drawImg(custom.good,it.size*1.05); else drawGem(it.size);
+      if(gemSprite.ready) drawImg(gemSprite.img,it.size*1.05); else drawGem(it.size);
     }
     ctx.restore();
   }
@@ -623,7 +632,7 @@
     const clr=card.querySelector('.clear');
     if(clr)clr.addEventListener('click',e=>{e.stopPropagation();setSlot(slot,null);});
   });
-  document.getElementById('resetAll').addEventListener('click',()=>{setSlot('good',null);setSlot('bad',null);});
+  document.getElementById('resetAll').addEventListener('click',()=>{setSlot('bad',null);});
   let resumeAfterModal=false;
   function openModal(){
     if(state==='playing'){resumeAfterModal=true;togglePause();}
